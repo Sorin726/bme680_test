@@ -72,3 +72,59 @@ double calculate_temp(uint32_t temp_adc, temp_calib_data calib_data) {
 
     return temp_comp;
 }
+
+// Function the humidity calibration values
+hum_calib_data read_hum_cal(i2c_inst_t *i2c_port, uint8_t device_address) {
+    uint8_t par_h1_h2_lsb, par_h1_msb, par_h2_msb, par_h3, par_h4, par_h5, par_h6, par_h7;
+    i2c_read(i2c_port, device_address, PAR_H1_H2_LSB, &par_h1_h2_lsb, 1);
+    i2c_read(i2c_port, device_address, PAR_H1_MSB, &par_h1_msb, 1);
+    i2c_read(i2c_port, device_address, PAR_H2_MSB, &par_h2_msb, 1);
+    i2c_read(i2c_port, device_address, PAR_H3, &par_h3, 1);
+    i2c_read(i2c_port, device_address, PAR_H4, &par_h4, 1);
+    i2c_read(i2c_port, device_address, PAR_H5, &par_h5, 1);
+    i2c_read(i2c_port, device_address, PAR_H6, &par_h6, 1);
+    i2c_read(i2c_port, device_address, PAR_H7, &par_h7, 1);
+
+    // Calculate par_h1_lsb and par_h2 lsb from the register
+    uint8_t par_h1_lsb = par_h1_h2_lsb & PAR_H1_LSB_MSK;
+    uint8_t par_h2_lsb = par_h1_h2_lsb >> 4;
+
+    // Combine the calibration values
+    uint16_t par_h1 = ((uint16_t)par_h1_msb << 4) | (uint16_t)par_h1_lsb;
+    uint16_t par_h2 = ((uint16_t)par_h2_msb << 4) | (uint16_t)par_h2_lsb;
+
+    hum_calib_data calib_data = {par_h1, par_h2, par_h3, par_h4, par_h5, par_h6, par_h7};
+    return calib_data;
+}
+
+// Function to read humidity adc values
+uint16_t read_hum(i2c_inst_t *i2c_port, uint8_t device_address) {
+    uint8_t hum_adc[2];
+    i2c_read(i2c_port, device_address, HUM_MSB, hum_adc, 2);
+
+    // Combine the raw humidity data
+    uint16_t hum_raw = ((uint16_t)hum_adc[0] << 8) | (uint16_t)hum_adc[1];
+    return hum_raw;
+}
+
+// Function to calculate humidity
+double calculate_hum(uint16_t hum_adc, hum_calib_data calib_data, double temp_comp) {
+    // hum_adc is the 16-bit humidity ADC (MSB<<8 | LSB)
+    uint16_t par_h1 = calib_data.par_h1;
+    uint16_t par_h2 = calib_data.par_h2;
+    uint8_t par_h3 = calib_data.par_h3;
+    uint8_t par_h4 = calib_data.par_h4;
+    uint8_t par_h5 = calib_data.par_h5;
+    uint8_t par_h6 = calib_data.par_h6;
+    uint8_t par_h7 = calib_data.par_h7;
+
+    double var1 = hum_adc - (((double)par_h1 * 16.0) + (((double)par_h3 / 2.0) * temp_comp));
+    double var2 = var1 * (((double)par_h2 / 262144.0) *
+                 (1.0 + (((double)par_h4 / 16384.0) * temp_comp) +
+                      (((double)par_h5 / 1048576.0) * temp_comp * temp_comp)));
+    double var3 = (double)par_h6 / 16384.0;
+    double var4 = (double)par_h7 / 2097152.0;
+    double hum_comp = var2 + ((var3 + (var4 * temp_comp)) * var2 * var2);
+
+    return hum_comp;
+}

@@ -44,6 +44,10 @@ int main()
         uint8_t device_id;
         i2c_read(I2C_PORT, BME680_I2C_ADDR, CHIP_ID, &device_id, 1);
 
+        // Enable humidity measurement
+        uint8_t ctrl_hum_data_write = 0x01; // osrs_h = 1 (oversampling x1)
+        i2c_write(I2C_PORT, BME680_I2C_ADDR, CTRL_HUM, ctrl_hum_data_write, 1);
+
         // Send device ID over UART
         printf("Device ID: 0x%02X\n", device_id);
 
@@ -77,5 +81,16 @@ int main()
         double temp_comp = calculate_temp(temp_raw, calib_data);
 
         printf("Temperature: %.2f °C\n", temp_comp);
+
+        // Read humidity settings
+        uint8_t ctrl_hum_data_read;
+        i2c_read(I2C_PORT, BME680_I2C_ADDR, CTRL_HUM, &ctrl_hum_data_read, 1);
+        printf("CTRL_HUM data: 0x%02X\n", ctrl_hum_data_read);
+
+        // Read humidity sequence
+        hum_calib_data h_calib_data = read_hum_cal(I2C_PORT, BME680_I2C_ADDR);
+        uint16_t hum_adc = read_hum(I2C_PORT, BME680_I2C_ADDR);
+        double hum_comp = calculate_hum(hum_adc, h_calib_data, temp_comp);
+        printf("Humidity: %.2f %%\n", hum_comp);
     }
 }
