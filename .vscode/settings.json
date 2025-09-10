@@ -12,6 +12,7 @@
             "statusBarVisibility": "hidden"
         }
     },
+    "cmake.buildDirectory": "${workspaceFolder}/build",
     "cmake.configureOnEdit": false,
     "cmake.automaticReconfigure": false,
     "cmake.configureOnOpen": false,

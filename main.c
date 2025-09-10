@@ -37,8 +37,8 @@ int main()
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0);
         sleep_ms(1000);
 
-        // Set the device to conversion mode
-        uint8_t config_data_write = (0x01 << 5 | 0x01);
+        // Set the device to normal mode, temp and pressure oversampling x1
+        uint8_t config_data_write = (0x01 << 5 | 0x01 << 2 | 0x01);
         i2c_write(I2C_PORT, BME680_I2C_ADDR, CTRL_MEAS, config_data_write, 1);
 
         uint8_t device_id;
@@ -78,7 +78,8 @@ int main()
         printf("Raw temperature: %d\n", temp_raw);
 
         temp_calib_data calib_data = read_temp_cal(I2C_PORT, BME680_I2C_ADDR);
-        double temp_comp = calculate_temp(temp_raw, calib_data);
+        double t_fine = calculate_t_fine(temp_raw, calib_data);
+        double temp_comp = calculate_temp(t_fine);
 
         printf("Temperature: %.2f °C\n", temp_comp);
 
@@ -92,5 +93,14 @@ int main()
         uint16_t hum_adc = read_hum(I2C_PORT, BME680_I2C_ADDR);
         double hum_comp = calculate_hum(hum_adc, h_calib_data, temp_comp);
         printf("Humidity: %.2f %%\n", hum_comp);
+
+        // Read pressure sequence
+        press_calib_data p_calib_data = read_press_cal(I2C_PORT, BME680_I2C_ADDR);
+        uint32_t press_adc = read_press(I2C_PORT, BME680_I2C_ADDR);
+        double press_comp = calculate_press(press_adc, p_calib_data, t_fine);
+
+        // Convert pressure from Pa to hPa
+        press_comp /= 100.0;
+        printf("Pressure: %.2f hPa\n", press_comp);
     }
 }
