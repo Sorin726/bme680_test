@@ -1,11 +1,2 @@
 build
 !.vscode/*
-build.ninja
-cmake_install.cmake
-CmakeCache.txt
-compile_commands.json
-generated
-CMakeFiles
-pico-sdk/**/cmake_install.cmake
-pico-sdk/**/CMakeFiles/
-pico-sdk/**/CMakeCache.txt
